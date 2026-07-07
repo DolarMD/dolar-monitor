@@ -1,4 +1,22 @@
-// 1. Referencias al DOM
+// ==========================================
+// 1. INICIALIZACIÓN DE FIREBASE (COMPAT)
+// ==========================================
+if (!firebase.apps.length) {
+    firebase.initializeApp({
+        apiKey: "AIzaSyCesCFnkX1KISBYzgHNvBdwY2R1Be7c9UQ",
+        authDomain: "dolar-monitor-diario.firebaseapp.com",
+        projectId: "dolar-monitor-diario",
+        storageBucket: "dolar-monitor-diario.firebasestorage.app",
+        messagingSenderId: "507179043038",
+        appId: "1:507179043038:web:65f5541b7a09cb45531a4f"
+    });
+}
+const db = firebase.firestore();
+const messaging = firebase.messaging();
+
+// ==========================================
+// 2. REFERENCIAS AL DOM
+// ==========================================
 const inputUsd = document.getElementById('input-usd');
 const inputVes = document.getElementById('input-ves');
 const btnRefresh = document.getElementById('btn-refresh');
@@ -10,7 +28,6 @@ const btnCapture = document.getElementById('btn-capture');
 const themeBtn = document.getElementById('btn-theme');
 const btnEnableNotifications = document.getElementById('btn-enable-notifications');
 
-// Referencias Nuevas (UX y Menú)
 const btnMenuToggle = document.getElementById('btn-menu-toggle');
 const btnCloseMenu = document.getElementById('btn-close-menu');
 const sideMenu = document.getElementById('side-menu');
@@ -21,197 +38,135 @@ const copyVes = document.getElementById('copy-ves');
 const toast = document.getElementById('toast');
 const btnClearInputs = document.getElementById('btn-clear-inputs'); 
 
-// 2. Estado (Ahora con LocalStorage para persistencia)
-let tasas = JSON.parse(localStorage.getItem('dmd_tasas')) || { oficial: 622.21, paralelo: 622.21 }; 
+// ==========================================
+// 3. ESTADO DE LA APLICACIÓN
+// ==========================================
+let tasas = JSON.parse(localStorage.getItem('dmd_tasas')) || { oficial: 622.21, paralelo: 622.21, personalizada: 622.21 }; 
 let tipoTasaActual = localStorage.getItem('dmd_tipoTasa') || 'oficial'; 
 let tasaActual = tasas[tipoTasaActual];
 
-tasaSelector.value = tipoTasaActual;
+// ==========================================
+// 4. FUNCIONES HELPER / DE SOPORTE
+// ==========================================
+function formatearNumero(num) {
+    if (isNaN(num) || num === null) return '0,00';
+    return Number(num).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
 
-// 3. Utilidades
-const parsearNumero = (valorStr) => {
-    if (!valorStr) return 0;
-    let limpio = valorStr.toString().replace(/\./g, '').replace(',', '.');
-    limpio = limpio.replace(/[^0-9.-]/g, '');
-    return parseFloat(limpio) || 0;
-};
+function parsearNumero(str) {
+    if (!str) return 0;
+    return parseFloat(str.replace(/\./g, '').replace(',', '.'));
+}
 
-const formatearNumero = (numero) => {
-    return new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(numero);
-};
+function mostrarToast(mensaje) {
+    if (toast) {
+        toast.textContent = mensaje;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+}
 
-const mostrarToast = (mensaje) => {
-    toast.textContent = mensaje;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2000);
-};
+function toggleMenu() {
+    if (sideMenu && menuOverlay) {
+        sideMenu.classList.toggle('active');
+        menuOverlay.classList.toggle('active');
+    }
+}
 
-// 4. Cálculos
-const calcular = (origen) => {
-    const usd = parsearNumero(inputUsd.value);
-    const ves = parsearNumero(inputVes.value);
+// Alias de control de menú buscado por módulos externos (ej: calculadora-euro)
+function toggle() {
+    toggleMenu();
+}
+
+// ==========================================
+// 5. LÓGICA DE CÁLCULO Y API
+// ==========================================
+function calcular(origen) {
+    const vUsd = parsearNumero(inputUsd.value);
+    const vVes = parsearNumero(inputVes.value);
+    tasaActual = tasas[tipoTasaActual] || 1;
 
     if (origen === 'usd') {
-        inputVes.value = formatearNumero(usd * tasaActual);
-    } else {
-        inputUsd.value = formatearNumero(ves / tasaActual);
+        if (!isNaN(vUsd) && inputUsd.value !== '') {
+            inputVes.value = formatearNumero(vUsd * tasaActual);
+        } else {
+            inputVes.value = '';
+        }
+    } else if (origen === 'ves') {
+        if (!isNaN(vVes) && inputVes.value !== '') {
+            inputUsd.value = formatearNumero(vVes / tasaActual);
+        } else {
+            inputUsd.value = '';
+        }
     }
-};
+}
 
-const actualizarVista = () => {
-    tasaActual = tasas[tipoTasaActual];
-    inputUsd.value = formatearNumero(parsearNumero(inputUsd.value));
-    calcular('usd');
-    
-    const fecha = new Date().toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'numeric', year: 'numeric' });
-    fechaTexto.textContent = fecha.charAt(0).toUpperCase() + fecha.slice(1);
-};
-
-// 5. API Robusta
-const obtenerTasa = async () => {
-    refreshIcon.classList.add('spinning'); 
-    
+async function obtenerTasa() {
+    if (refreshIcon) refreshIcon.classList.add('spinning');
     try {
-        const respuesta = await fetch('https://ve.dolarapi.com/v1/dolares');
-        const data = await respuesta.json();
+        const res = await fetch('https://ve.dolarapi.com/v1/dolares');
+        const data = await res.json();
         
         const bcv = data.find(d => d.fuente === 'oficial');
         const paralelo = data.find(d => d.fuente === 'paralelo');
-        
+
         if (bcv) tasas.oficial = bcv.promedio;
         if (paralelo) tasas.paralelo = paralelo.promedio;
-        
+
         localStorage.setItem('dmd_tasas', JSON.stringify(tasas));
-        actualizarVista();
-
-        if (bcv) {
-            const variacion = bcv.variacion || 0;
-            variacionTexto.innerHTML = `<i class="icon-trending"></i> Variación: <span class="green-text">${variacion > 0 ? '+' : ''}${formatearNumero(variacion)} Bs</span>`;
+        tasaActual = tasas[tipoTasaActual];
+        
+        if (fechaTexto) {
+            const ahora = new Date();
+            fechaTexto.textContent = ahora.toLocaleDateString('es-VE', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', hour12: true
+            });
         }
-    } catch (error) {
-        variacionTexto.innerHTML = `<i class="icon-clock"></i> Usando última tasa guardada (Sin conexión)`;
-        actualizarVista();
-    } finally {
-        setTimeout(() => refreshIcon.classList.remove('spinning'), 500);
-    }
-};
-
-// 6. Eventos
-inputUsd.addEventListener('input', () => calcular('usd'));
-inputVes.addEventListener('input', () => calcular('ves'));
-
-inputUsd.addEventListener('focus', (e) => e.target.select());
-inputVes.addEventListener('focus', (e) => e.target.select());
-
-tasaSelector.addEventListener('change', (e) => {
-    tipoTasaActual = e.target.value;
-    localStorage.setItem('dmd_tipoTasa', tipoTasaActual);
-    actualizarVista();
-});
-
-// Botones Rápidos
-btnQuicks.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        if (btn.id === 'btn-clear-inputs') return;
-        const valorSumar = parseFloat(e.target.getAttribute('data-val'));
-        let actualUsd = parsearNumero(inputUsd.value);
-        inputUsd.value = formatearNumero(actualUsd + valorSumar);
+        
         calcular('usd');
-    });
-});
-
-if (btnClearInputs) {
-    btnClearInputs.addEventListener('click', () => {
-        inputUsd.value = formatearNumero(0);
-        inputVes.value = formatearNumero(0);
-        mostrarToast('Calculadora reiniciada');
-        inputUsd.focus();
-    });
+        console.log('Tasas sincronizadas con éxito:', tasas);
+    } catch (error) {
+        console.error('Error obteniendo tasas:', error);
+        mostrarToast('Usando tasas locales sin conexión');
+    } finally {
+        if (refreshIcon) refreshIcon.classList.remove('spinning');
+    }
 }
 
-// 7. Compartir Resumen
-btnCapture.addEventListener('click', async () => {
-    const textoResumen = `📊 *Dólar Monitor Diario*
-🗓 Fecha: ${fechaTexto.textContent}
-💵 Tasa (${tipoTasaActual.toUpperCase()}): ${formatearNumero(tasaActual)} Bs
-
-💰 USD: ${inputUsd.value} $
-🇻🇪 Bs: ${inputVes.value} Bs
-
--------------------------
-Calculado con DMD App`;
-
-    if (navigator.share) {
-        try {
-            await navigator.share({
-                title: 'Cálculo DMD',
-                text: textoResumen
-            });
-        } catch (err) {
-            console.log('Compartir cancelado');
-        }
-    } else {
-        navigator.clipboard.writeText(textoResumen);
-        mostrarToast('Resumen copiado al portapapeles');
-    }
-});
-
-// Dark Mode Toggle
-themeBtn.addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
-});
-
-btnRefresh.addEventListener('click', obtenerTasa);
-
-const toggle = () => {
-    sideMenu.classList.toggle('active');
-    menuOverlay.classList.toggle('active');
-};
-btnMenuToggle.addEventListener('click', toggle);
-btnCloseMenu.addEventListener('click', toggle);
-menuOverlay.addEventListener('click', toggle);
-
-
-// ====== CONFIGURACIÓN Y NOTIFICACIONES DE FIREBASE ======
-const firebaseConfig = {
-  apiKey: "AIzaSyCesCFnkX1KISBYzgHNvBdwY2R1Be7c9UQ",
-  authDomain: "dolar-monitor-diario.firebaseapp.com",
-  projectId: "dolar-monitor-diario",
-  storageBucket: "dolar-monitor-diario.firebasestorage.app",
-  messagingSenderId: "507179043038",
-  appId: "1:507179043038:web:65f5541b7a09cb45531a4f"
-};
-
-firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
-const db = firebase.firestore(); 
-
-// Función para solicitar permisos mediante botón
+// ==========================================
+// 6. GESTIÓN DE NOTIFICACIONES PUSH
+// ==========================================
 function solicitarPermisos() {
     Notification.requestPermission().then((permission) => {
         if (permission === 'granted') {
             console.log('Permiso de notificaciones concedido');
             
-            messaging.getToken({ 
-                vapidKey: 'BAo47eL2Ro2S9fsWVXjki9-b026QHG2iPtMNONzbSOA988x93F1vKlmnnkIjMJFbZIErXmk-FW7A66QptBkcFf4'
-            }).then((currentToken) => {
-                if (currentToken) {
-                    db.collection('tokens').doc(currentToken).set({
-                        token: currentToken,
-                        fecha: firebase.firestore.FieldValue.serverTimestamp()
-                    })
-                    .then(() => {
-                        console.log('¡Token guardado!');
-                        mostrarToast('¡Notificaciones activadas!');
-                    })
-                    .catch((err) => console.error('Error al guardar:', err));
-                }
-            }).catch((err) => {
-                console.log('Error al obtener el token:', err);
-            });
-mostrarToast('¡Notificaciones activas!'); 
-       
-          
+            if ('serviceWorker' in navigator) {
+                // Esperamos que el service worker esté activo para pasarle el registro a Firebase
+                navigator.serviceWorker.ready.then((registration) => {
+                    messaging.getToken({ 
+                        vapidKey: 'BAo47eL2Ro2S9fsWVXjki9-b026QHG2iPtMNONzbSOA988x93F1vKlmnnkIjMJFbZIErXmk-FW7A66QptBkcFf4',
+                        serviceWorkerRegistration: registration 
+                    }).then((currentToken) => {
+                        if (currentToken) {
+                            db.collection('tokens').doc(currentToken).set({
+                                token: currentToken,
+                                fecha: firebase.firestore.FieldValue.serverTimestamp()
+                            })
+                            .then(() => {
+                                console.log('¡Token guardado!');
+                                mostrarToast('¡Notificaciones activadas!');
+                            })
+                            .catch((err) => console.error('Error al guardar en Firestore:', err));
+                        }
+                    }).catch((err) => {
+                        console.error('Error al obtener el token de FCM:', err);
+                    });
+                }).catch((err) => {
+                    console.error('Error con el Service Worker activo:', err);
+                });
+            }
         } else {
             console.log('Permiso denegado por el usuario');
             mostrarToast('Permiso denegado');
@@ -219,21 +174,132 @@ mostrarToast('¡Notificaciones activas!');
     });
 }
 
-// Evento para el botón
+// ==========================================
+// 7. EVENTOS Y ESCUCHADORES DE LA INTERFAZ
+// ==========================================
+
+// Entradas numéricas
+if (inputUsd) {
+    inputUsd.addEventListener('input', () => calcular('usd'));
+    inputUsd.addEventListener('focus', (e) => e.target.select());
+}
+if (inputVes) {
+    inputVes.addEventListener('input', () => calcular('ves'));
+    inputVes.addEventListener('focus', (e) => e.target.select());
+}
+
+// Botón de actualización manual de la API
+if (btnRefresh) btnRefresh.addEventListener('click', obtenerTasa);
+
+// Selector de Tasas (BCV / Paralelo / Personalizada)
+if (tasaSelector) {
+    tasaSelector.value = tipoTasaActual;
+    tasaSelector.addEventListener('change', (e) => {
+        tipoTasaActual = e.target.value;
+        localStorage.setItem('dmd_tipoTasa', tipoTasaActual);
+        tasaActual = tasas[tipoTasaActual];
+        calcular('usd');
+    });
+}
+
+// Botón para limpiar cajas de texto
+if (btnClearInputs) {
+    btnClearInputs.addEventListener('click', () => {
+        inputUsd.value = '';
+        inputVes.value = '';
+    });
+}
+
+// Copiar al portapapeles
+if (copyUsd && inputUsd) {
+    copyUsd.addEventListener('click', () => {
+        if(inputUsd.value) {
+            navigator.clipboard.writeText(inputUsd.value);
+            mostrarToast('Monto USD copiado');
+        }
+    });
+}
+if (copyVes && inputVes) {
+    copyVes.addEventListener('click', () => {
+        if(inputVes.value) {
+            navigator.clipboard.writeText(inputVes.value);
+            mostrarToast('Monto Bs copiado');
+        }
+    });
+}
+
+// Botones rápidos de incremento (+1, +5, etc)
+btnQuicks.forEach(btn => {
+    btn.addEventListener('click', () => {
+        const valorAgregar = parseFloat(btn.getAttribute('data-val')) || 0;
+        let actualUsd = parsearNumero(inputUsd.value) || 0;
+        inputUsd.value = formatearNumero(actualUsd + valorAgregar);
+        calcular('usd');
+    });
+});
+
+// Controladores del Menú Desplegable
+if (btnMenuToggle) btnMenuToggle.addEventListener('click', toggleMenu);
+if (btnCloseMenu) btnCloseMenu.addEventListener('click', toggleMenu);
+if (menuOverlay) menuOverlay.addEventListener('click', toggleMenu);
+
+// Control de Tema (Oscuro / Claro)
+if (themeBtn) {
+    if (localStorage.getItem('dmd_theme') === 'dark') {
+        document.body.classList.add('dark-mode');
+        themeBtn.innerHTML = '<i class="icon-sun"></i>';
+    }
+    themeBtn.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        if (document.body.classList.contains('dark-mode')) {
+            localStorage.setItem('dmd_theme', 'dark');
+            themeBtn.innerHTML = '<i class="icon-sun"></i>';
+        } else {
+            localStorage.setItem('dmd_theme', 'light');
+            themeBtn.innerHTML = '<i class="icon-moon"></i>';
+        }
+    });
+}
+
+// Captura de Pantalla del Monitor
+if (btnCapture) {
+    btnCapture.addEventListener('click', () => {
+        const objetivo = document.querySelector('.container') || document.body;
+        mostrarToast('Generando imagen...');
+        html2canvas(objetivo, { useCORS: true, backgroundColor: null }).then(canvas => {
+            canvas.toBlob(blob => {
+                const item = new ClipboardItem({ "image/png": blob });
+                navigator.clipboard.write([item]).then(() => {
+                    mostrarToast('¡Imagen copiada al portapapeles!');
+                }).catch(err => {
+                    console.error('Fallo de portapapeles, descargando alternativamente...', err);
+                    const link = document.createElement('a');
+                    link.download = `DolarMonitor-${Date.now()}.png`;
+                    link.href = canvas.toDataURL();
+                    link.click();
+                });
+            });
+        });
+    });
+}
+
+// Disparador del Botón de Notificaciones
 if (btnEnableNotifications) {
     btnEnableNotifications.addEventListener('click', solicitarPermisos);
 }
 
-// Detectar notificaciones cuando la app SÍ está abierta (Primer Plano)
+// Captura de mensajes Push mientras la App está abierta (Primer plano)
 messaging.onMessage((payload) => {
-    console.log('Mensaje en primer plano:', payload);
+    console.log('Mensaje recibido en tiempo real:', payload);
     alert(`🔔 ¡Notificación en vivo!\n\nTítulo: ${payload.notification.title}\nTexto: ${payload.notification.body}`);
 });
 
-// Ejecución inicial
+// Execución inicial al cargar la App
 obtenerTasa();
 
-// ====== REGISTRO DEL SERVICE WORKER ======
+// ==========================================
+// 8. REGISTRO OFICIAL DEL SERVICE WORKER
+// ==========================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./firebase-messaging-sw.js')
@@ -244,5 +310,4 @@ if ('serviceWorker' in navigator) {
         console.error('Fallo al registrar el Service Worker:', error);
       });
   });
-            }
-    
+}
