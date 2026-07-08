@@ -38,37 +38,29 @@ body {
 .app-container { width: 100%; max-width: 400px; position: relative; z-index: 1; }
 
 /* LOGO DMD ESTILIZADO */
+/* Reemplaza la sección del logo en tu style.css por esta */
 .logo-container { text-align: center; margin-bottom: 25px; }
 
 .logo-circle {
     width: 75px;
     height: 75px;
-    background: var(--logo-grad);
-    border-radius: 22px; 
     margin: 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: 0 10px 20px rgba(32, 168, 135, 0.3);
     border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 22px; 
+    overflow: hidden; /* Crucial para que la imagen respete las esquinas redondeadas */
+    background: #1e3a34; /* Color de fondo de respaldo mientras carga la imagen */
 }
 
-.logo-text {
-    color: white;
-    font-family: 'Georgia', serif;
-    font-weight: bold;
-    font-size: 20px;
-    letter-spacing: 2px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+.logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Hace que la imagen llene el espacio sin deformarse */
 }
 
-h1 { 
-    font-size: 22px; 
-    margin-top: 15px; 
-    font-weight: 700; 
-    letter-spacing: -0.5px;
-    color: var(--text-main);
-}
 
 /* TARJETA Y COMPONENTES */
 .main-card {
@@ -140,12 +132,70 @@ select.badge-bcv {
 
 .icon-moon { width: 14px; height: 14px; border-radius: 50%; box-shadow: -4px 4px 0 0 currentColor; transform: rotate(-15deg); display: inline-block; }
 
+.icon-sun {
+    width: 10px;
+    height: 10px;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    position: relative;
+    display: inline-block;
+    margin: 2px;
+}
+.icon-sun::before {
+    content: '';
+    position: absolute;
+    top: -6px; left: 4px;
+    width: 2px; height: 3px;
+    background: currentColor;
+    box-shadow: 0 19px currentColor; /* Rayos superior e inferior */
+}
+.icon-sun::after {
+    content: '';
+    position: absolute;
+    top: 4px; left: -6px;
+    width: 3px; height: 2px;
+    background: currentColor;
+    box-shadow: 19px 0 currentColor; /* Rayos izquierdo y derecho */
+}
+
 .icon-menu { width: 18px; height: 2px; background: currentColor; position: relative; display: inline-block; }
 .icon-menu::before, .icon-menu::after { content: ""; position: absolute; width: 18px; height: 2px; background: currentColor; left: 0; }
 .icon-menu::before { top: -6px; } .icon-menu::after { top: 6px; }
 
 .icon-clock { width: 14px; height: 14px; border: 2px solid var(--gray-text); border-radius: 50%; position: relative; display: inline-block; }
 .icon-clock::after { content: ""; position: absolute; top: 3px; left: 6px; width: 2px; height: 4px; background: var(--gray-text); }
+
+/* --- CAMPANA DE NOTIFICACIONES --- */
+.icon-bell {
+    width: 14px;
+    height: 12px;
+    background: currentColor;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    position: relative;
+    display: inline-block;
+    margin-top: 2px;
+}
+.icon-bell::before {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: -2px;
+    width: 18px;
+    height: 2px;
+    background: currentColor;
+    border-radius: 1px;
+}
+.icon-bell::after {
+    content: "";
+    position: absolute;
+    bottom: -5px;
+    left: 6px;
+    width: 2px;
+    height: 3px;
+    background: currentColor;
+    border-radius: 0 0 2px 2px;
+}
 
 /* --- ESTILOS NUEVOS (Menú, Botones Rápidos, Notificaciones) --- */
 
@@ -335,7 +385,7 @@ select.badge-bcv {
 .icon-edit { 
     width: 14px; 
     height: 14px; 
-    border: 2px solid var(--gray-text); 
+    border: 2px solid currentColor; 
     border-radius: 3px; 
     position: relative; 
     display: inline-block; 
@@ -347,7 +397,7 @@ select.badge-bcv {
     left: 2px; 
     width: 6px; 
     height: 2px; 
-    background: var(--gray-text); 
+    background: currentColor; 
     border-radius: 1px;
 }
 .icon-edit::before {
@@ -357,19 +407,8 @@ select.badge-bcv {
     left: 2px; 
     width: 4px; 
     height: 2px; 
-    background: var(--gray-text); 
+    background: currentColor; 
     border-radius: 1px;
-}
-/* Hacer que herede el color del contenedor en el menú activo */
-.menu-list li:hover .icon-edit,
-.modal-header .icon-edit {
-    border-color: currentColor;
-}
-.menu-list li:hover .icon-edit::after,
-.menu-list li:hover .icon-edit::before,
-.modal-header .icon-edit::after,
-.modal-header .icon-edit::before {
-    background: currentColor;
 }
 
 /* Estilo específico para el botón de limpiar */
@@ -379,4 +418,5 @@ select.badge-bcv {
 }
 .btn-quick.btn-clear:active {
     transform: scale(0.95);
-}
+            }
+                       
