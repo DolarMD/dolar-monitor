@@ -21,7 +21,6 @@
         <button id="btn-close-menu" class="btn-circle"><i class="icon-close"></i></button>
     </div>
     <ul class="menu-list">
-        <li><i class="icon-euro"></i> Calculadora EUR/VES (Próximamente)</li>
         <li id="btn-open-manual-rate">
             <i class="icon-edit"></i> Tasa Manual (Personalizada)
         </li>
@@ -31,10 +30,9 @@
 <div id="menu-overlay" class="menu-overlay"></div>
 
 <div class="app-container">
-    
     <div class="logo-container">
         <div class="logo-circle">
-            <img src="./Logo_512.png" alt="Dólar Monitor Diario" class="logo-img">
+            <img src="./logo_512.png" alt="Dólar Monitor Diario" class="logo-img">
         </div>
         <h1>Dólar Monitor Diario</h1>
     </div>
@@ -45,21 +43,23 @@
         <select id="tasa-selector" class="badge-bcv">
             <option value="oficial">Dólar BCV</option>
             <option value="paralelo">Dólar Paralelo</option>
+            <option value="usdt">USDT (Binance)</option>
+            <option value="euro">Euro (Oficial)</option>
             <option value="personalizada">Tasa Manual</option>
         </select>
         
         <div class="input-row">
             <span>$</span>
             <input type="text" inputmode="decimal" id="input-usd" value="1,00">
-            <i class="icon-copy" id="copy-usd" title="Copiar USD"></i>
+            <i class="icon-copy" id="copy-usd" title="Copiar Divisa"></i>
         </div>
         
         <div class="quick-amounts">
-            <button class="btn-quick" data-val="1">+1$</button>
-            <button class="btn-quick" data-val="5">+5$</button>
-            <button class="btn-quick" data-val="10">+10$</button>
-            <button class="btn-quick" data-val="50">+50$</button>
-            <button class="btn-quick" data-val="100">+100$</button>
+            <button class="btn-quick" data-val="1">+1</button>
+            <button class="btn-quick" data-val="5">+5</button>
+            <button class="btn-quick" data-val="10">+10</button>
+            <button class="btn-quick" data-val="50">+50</button>
+            <button class="btn-quick" data-val="100">+100</button>
             <button class="btn-quick btn-clear" id="btn-clear-inputs" title="Limpiar todo">
                 <i class="icon-close" style="display: inline-block; transform: scale(0.8); top: 1px;"></i> Clear
             </button>
@@ -94,11 +94,6 @@
         <button class="btn-circle" id="btn-theme"><i class="icon-moon"></i></button>
         <button class="btn-circle" id="btn-menu-toggle"><i class="icon-menu"></i></button>
     </div>
-
-    <div style="text-align: center; margin: 20px auto 10px auto; width: 100%; max-width: 320px; min-height: 80px;">
-        <script async="async" data-cfasync="false" src="https://pl30258405.effectivecpmnetwork.com/1716d7b93114bc39c04f960d56b29ed6/invoke.js"></script>
-        <div id="container-1716d7b93114bc39c04f960d56b29ed6"></div>
-    </div>
 </div>
 
 <div id="toast" class="toast">Copiado al portapapeles</div>
@@ -131,5 +126,4 @@
 <script src="guardados.js"></script>
 
 </body>
-        </html>
-        
+</html>
