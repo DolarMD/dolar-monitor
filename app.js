@@ -119,8 +119,6 @@ function calcular(origen) {
 }
 
 async function obtenerTasa() {
-
-    
     if (refreshIcon) refreshIcon.classList.add('spinning');
     try {
         // Ejecución en paralelo de todas las fuentes necesarias
@@ -257,7 +255,12 @@ if (tasaSelector) {
     
     tasaSelector.addEventListener('change', (e) => {
         tipoTasaActual = e.target.value;
-        gtag('event', 'cambio_tipo_tasa', { 'tasa_seleccionada': tipoTasaActual });
+        
+        // EVENTO GA4: Seguimiento del cambio de tasa
+        if(typeof gtag !== 'undefined') {
+            gtag('event', 'cambio_tipo_tasa', { 'tasa_seleccionada': tipoTasaActual });
+        }
+        
         localStorage.setItem('dmd_tipoTasa', tipoTasaActual);
         tasaActual = tasas[tipoTasaActual];
         actualizarSimboloVisual();
@@ -279,8 +282,11 @@ if (copyUsd && inputUsd) {
         if(inputUsd.value) {
             navigator.clipboard.writeText(inputUsd.value);
 
-            gtag('event', 'copiar_monto', { 'moneda': 'USD' }); 
-        mostrarToast(`Monto USD copiado`);
+            // EVENTO GA4: Seguimiento de copiar divisa
+            if(typeof gtag !== 'undefined') {
+                gtag('event', 'copiar_monto', { 'moneda': 'USD' });
+            }
+
             let etiqueta = 'USD';
             if(tipoTasaActual === 'euro') etiqueta = 'EUR';
             if(tipoTasaActual === 'usdt') etiqueta = 'USDT';
@@ -292,6 +298,12 @@ if (copyVes && inputVes) {
     copyVes.addEventListener('click', () => {
         if(inputVes.value) {
             navigator.clipboard.writeText(inputVes.value);
+            
+            // EVENTO GA4: Seguimiento de copiar bolívares
+            if(typeof gtag !== 'undefined') {
+                gtag('event', 'copiar_monto', { 'moneda': 'VES' });
+            }
+            
             mostrarToast('Monto Bs copiado');
         }
     });
@@ -416,8 +428,13 @@ if (btnCapture) {
                             title: 'Recibo de Conversión',
                             text: `Conversión: ${simboloMoneda ? simboloMoneda.textContent : '$'}${inputUsd.value || '0,00'} = Bs. ${inputVes.value || '0,00'} VES`
                         })
-                        .then(() => gtag('event', 'generar_recibo', { 'metodo': 'share' });
-    mostrarToast('¡Recibo compartido!'); mostrarToast('¡Recibo compartido!'))
+                        .then(() => {
+                            // EVENTO GA4: Seguimiento de generación de recibos compartidos
+                            if(typeof gtag !== 'undefined') {
+                                gtag('event', 'generar_recibo', { 'metodo': 'share' });
+                            }
+                            mostrarToast('¡Recibo compartido!');
+                        })
                         .catch(err => {
                             console.log('Compartir cancelado o interrumpido, descargando...', err);
                             descargarImagenFallback(canvas);
@@ -449,6 +466,10 @@ if (btnCapture) {
 
 // Función auxiliar para descarga directa
 function descargarImagenFallback(canvas) {
+    // EVENTO GA4: Seguimiento de generación de recibos descargados
+    if(typeof gtag !== 'undefined') {
+        gtag('event', 'generar_recibo', { 'metodo': 'download' });
+    }
     const link = document.createElement('a');
     link.download = `ReciboMonitor-${Date.now()}.png`;
     link.href = canvas.toDataURL('image/png');
@@ -459,70 +480,4 @@ function descargarImagenFallback(canvas) {
 // Disparador del Botón de Notificaciones
 if (btnEnableNotifications) {
     if (localStorage.getItem('dmd_notificaciones_activas') === 'true') {
-        btnEnableNotifications.style.color = "var(--accent-teal)";
-    }
-    btnEnableNotifications.addEventListener('click', solicitarPermisos);
-}
-
-// Captura de mensajes Push mientras la App está abierta (Primer plano)
-messaging.onMessage((payload) => {
-    console.log('Mensaje recibido en tiempo real:', payload);
-    alert(`🔔 ¡Notificación en vivo!\n\nTítulo: ${payload.notification.title}\nTexto: ${payload.notification.body}`);
-});
-
-// Ejecución inicial al cargar la App
-obtenerTasa();
-
-// ==========================================
-// 8. REGISTRO OFICIAL DEL SERVICE WORKER
-// ==========================================
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./firebase-messaging-sw.js')
-      .then((registration) => {
-        console.log('¡Service Worker registrado con éxito!', registration.scope);
-      })
-      .catch((error) => {
-        console.error('Fallo al registrar el Service Worker:', error);
-      });
-  });
-                }
-
-
-
-let deferredPrompt;
-const installButton = document.getElementById('install-button');
-
-// Escucha el evento que lanza el navegador cuando detecta que tu web es una PWA
-window.addEventListener('beforeinstallprompt', (e) => {
-    // Evita que aparezca el banner automático del navegador
-    e.preventDefault();
-    // Guardamos el evento para usarlo luego
-    deferredPrompt = e;
-    // Mostramos nuestro botón
-    installButton.style.display = 'flex'; 
-});
-
-// Cuando el usuario hace clic en TU botón
-installButton.addEventListener('click', (e) => {
-    if (deferredPrompt) {
-        // Lanzamos el diálogo de instalación
-        deferredPrompt.prompt();
-        // Esperamos a ver qué decidió el usuario
-        deferredPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-                console.log('¡Usuario instaló la App!');
-            }
-            deferredPrompt = null;
-            // Ocultamos el botón después de la acción
-            installButton.style.display = 'none';
-        });
-    }
-});
-
-// Ocultar botón si ya se instaló
-window.addEventListener('appinstalled', (evt) => {
-    installButton.style.display = 'none';
-    console.log('App ya instalada');
-});
-
+        btnEnab
