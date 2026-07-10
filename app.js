@@ -480,4 +480,69 @@ function descargarImagenFallback(canvas) {
 // Disparador del Botón de Notificaciones
 if (btnEnableNotifications) {
     if (localStorage.getItem('dmd_notificaciones_activas') === 'true') {
-        btnEnab
+        btnEnableNotifications.style.color = "var(--accent-teal)";
+    }
+    btnEnableNotifications.addEventListener('click', solicitarPermisos);
+}
+
+// Captura de mensajes Push mientras la App está abierta (Primer plano)
+messaging.onMessage((payload) => {
+    console.log('Mensaje recibido en tiempo real:', payload);
+    alert(`🔔 ¡Notificación en vivo!\n\nTítulo: ${payload.notification.title}\nTexto: ${payload.notification.body}`);
+});
+
+// Ejecución inicial al cargar la App
+obtenerTasa();
+
+// ==========================================
+// 8. REGISTRO OFICIAL DEL SERVICE WORKER
+// ==========================================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./firebase-messaging-sw.js')
+      .then((registration) => {
+        console.log('¡Service Worker registrado con éxito!', registration.scope);
+      })
+      .catch((error) => {
+        console.error('Fallo al registrar el Service Worker:', error);
+      });
+  });
+}
+
+let deferredPrompt;
+const installButton = document.getElementById('install-button');
+
+// Escucha el evento que lanza el navegador cuando detecta que tu web es una PWA
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Evita que aparezca el banner automático del navegador
+    e.preventDefault();
+    // Guardamos el evento para usarlo luego
+    deferredPrompt = e;
+    // Mostramos nuestro botón
+    installButton.style.display = 'flex'; 
+});
+
+// Cuando el usuario hace clic en TU botón
+installButton.addEventListener('click', (e) => {
+    if (deferredPrompt) {
+        // Lanzamos el diálogo de instalación
+        deferredPrompt.prompt();
+        // Esperamos a ver qué decidió el usuario
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('¡Usuario instaló la App!');
+                // EVENTO GA4 opcional para cuando alguien instala tu App
+                if(typeof gtag !== 'undefined') gtag('event', 'app_instalada', {});
+            }
+            deferredPrompt = null;
+            // Ocultamos el botón después de la acción
+            installButton.style.display = 'none';
+        });
+    }
+});
+
+// Ocultar botón si ya se instaló
+window.addEventListener('appinstalled', (evt) => {
+    installButton.style.display = 'none';
+    console.log('App ya instalada');
+});
