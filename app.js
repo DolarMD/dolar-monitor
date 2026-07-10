@@ -257,6 +257,7 @@ if (tasaSelector) {
     
     tasaSelector.addEventListener('change', (e) => {
         tipoTasaActual = e.target.value;
+        gtag('event', 'cambio_tipo_tasa', { 'tasa_seleccionada': tipoTasaActual });
         localStorage.setItem('dmd_tipoTasa', tipoTasaActual);
         tasaActual = tasas[tipoTasaActual];
         actualizarSimboloVisual();
@@ -277,6 +278,9 @@ if (copyUsd && inputUsd) {
     copyUsd.addEventListener('click', () => {
         if(inputUsd.value) {
             navigator.clipboard.writeText(inputUsd.value);
+
+            gtag('event', 'copiar_monto', { 'moneda': 'USD' }); 
+        mostrarToast(`Monto USD copiado`);
             let etiqueta = 'USD';
             if(tipoTasaActual === 'euro') etiqueta = 'EUR';
             if(tipoTasaActual === 'usdt') etiqueta = 'USDT';
@@ -412,7 +416,8 @@ if (btnCapture) {
                             title: 'Recibo de Conversión',
                             text: `Conversión: ${simboloMoneda ? simboloMoneda.textContent : '$'}${inputUsd.value || '0,00'} = Bs. ${inputVes.value || '0,00'} VES`
                         })
-                        .then(() => mostrarToast('¡Recibo compartido!'))
+                        .then(() => gtag('event', 'generar_recibo', { 'metodo': 'share' });
+    mostrarToast('¡Recibo compartido!'); mostrarToast('¡Recibo compartido!'))
                         .catch(err => {
                             console.log('Compartir cancelado o interrumpido, descargando...', err);
                             descargarImagenFallback(canvas);
